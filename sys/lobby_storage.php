@@ -29,10 +29,15 @@ This function run only once,
 when lobby server start, at parent process.
 */
 
+
+//This function call only once, and only when script is starting/restarting from parent process before fork's
+//!!!Do not call this function in other places!!!
 //Функция инициализации (!!!)не должна вызываться из главной логики!
 //Вызывается только раз, при новом запуске (перезапуске) сервера в процессе-предке.
 function storageInit(){
 global $storage, $psql_write;
+
+	//Prepare DB and create INIT record
 	if($storage['postgres']){
 		if(psqlWrite()){
 			$now = time();
@@ -41,6 +46,7 @@ global $storage, $psql_write;
 		}
 	}
 
+	//Prepare filesystems, check folders clean old records
 	if($storage['filesystem']){
 		//Check directory
 		if(!is_dir($storage['path']) && !mkdir($storage['path'])){
@@ -74,6 +80,7 @@ global $storage, $psql_write;
 	return false;
 }
 
+//Create new template for new hosted game
 //Создаём шаблон, для дальнейшего заполнения
 function storageInsert($arr){
 global $storage, $psql_write;
@@ -94,6 +101,7 @@ global $storage, $psql_write;
 	
 }
 
+//Updating DB
 //Обновляем бд
 function storageUpdate($id, $arr){
 global $storage, $psql_write;
@@ -162,6 +170,7 @@ global $storage, $psql_write;
 	
 }
 
+//Check and get new template by gameID
 //Проверяем созданный ранее пустой шаблон для игры, во избежании конфликтов с gameId
 function storageGetNew($gameid){
 global $storage, $psql_read;
@@ -185,7 +194,8 @@ global $storage, $psql_read;
 	return false;
 }
 
-
+//Return all games info between two dates
+//(called from www script only for now)
 function storageGetGamesBetween($from=0, $to=0){
 global $storage, $psql_read;
 
@@ -204,6 +214,7 @@ global $storage, $psql_read;
 	
 }
 
+//Get all opened games
 //Получаем все созданные и открытые на данный момент игры
 function storageGetOpenGames(){
 global $storage, $psql_read;
@@ -225,7 +236,6 @@ global $storage, $psql_read;
 			$c=[];
 			foreach($f as $key=>$value){
 				$c[$key]=$value;
-//				print "$key=>$value\n";
 			}
 			$c['private']=(($c['private'])?'t':'f');
 			$c['mapmod']=(($c['mapmod'])?'t':'f');
@@ -238,6 +248,7 @@ global $storage, $psql_read;
 }
 
 //Проверяем созданную "нами" игру во избежании конфликтов с gameId, для дальнейшего обновления в бд
+//Get current opened game by gameid
 function storageGetOpen($gameid){
 global $storage, $psql_read;
 
@@ -260,6 +271,7 @@ global $storage, $psql_read;
 	return false;
 }
 
+//Stats
 //Забор статистики
 function storageGetMapTop(){
 global $storage, $psql_read;
@@ -280,6 +292,7 @@ global $storage, $psql_read;
 	return false;
 }
 
+//Obtain the last created gameid
 //Получаем последний gameId от созданной игры
 function storageGetLastGameId(){
 global $storage, $psql_read;
@@ -303,6 +316,7 @@ global $storage, $psql_read;
 	return false;
 }
 
+//Stats
 //Забор статистики
 function storageGetHosterTop(){
 global $storage, $psql_read;
@@ -323,7 +337,7 @@ global $storage, $psql_read;
 	return false;
 }
 
-
+//Closing game in BD template
 //Закрываем бд
 function storageClose($id){
 global $storage, $psql_write;

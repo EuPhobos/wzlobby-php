@@ -39,6 +39,7 @@ global $MOTD;
 }
 
 //Проеряет доступность публичного адреса игрока-хостера
+//Check IP for incoming connection available
 function checkAvail($client){
 	$address = $client['hostip'];
 	$port = $client['hostport'];
@@ -57,12 +58,14 @@ function checkAvail($client){
 }
 
 //Возвращает игры с удалённого мастер-лобби сервера
+//Obtain a master lobby server game list
 function getMasterGames(){
 global $proxy, $GAMESTRUCT_VERSION;
 	$masters = explode(',',$proxy['master']);
 	$games = [];
 	
 	//Для каждого мастер-сервера
+	//For each master lobby servers
 	foreach($masters as $master){
 
 		$port = 0;
@@ -75,18 +78,20 @@ global $proxy, $GAMESTRUCT_VERSION;
 		if ($msock === false) {
 			out("Не удалось выполнить socket_create(): причина: " . socket_strerror(socket_last_error()));
 		}
+		//Check if master lobby running and accepted incoming connections
 		$result = @socket_connect($msock, $address, $port);
 		if ($result === false) {
 			out("ERR:Master $address:$port unavailable");
 			socket_close($msock);
 			continue;
 		}
+		
+		//Obtain a game list
 		$in = "list";
 		socket_write($msock, $in, strlen($in));
 		
 		$num = unpack('N', socket_read($msock, 4, PHP_BINARY_READ))[1];
-		
-		
+		//convert list in our format
 		for($i=0;$i<$num;$i++){
 			$sver = trim(unpack('N', socket_read($msock, 4, PHP_BINARY_READ))[1]);
 			if($GAMESTRUCT_VERSION == $sver){
@@ -109,29 +114,16 @@ global $proxy, $GAMESTRUCT_VERSION;
 }
 
 //Не усложняем тут, просто возвращает GameID (нужно изменить эту логику в сл. версии gameStruct протокола)
+//Be simple, just return gameID
 function getGameId(){
-	//в GameID используется беззнаковый 32битный, а это 4,294,967,295, однако в SQL они знаковые, а это половина.
-	//Трюк заключается в том, что бы проверить, если месяц чётный, игры начинаются с большего числа
-	//если не чётный то откатываются на начало отсчёта.
-	//Это сделано для того, что бы игры между собой не конфликтовали, и была оптимизированная ротация GameID без лишних циклов и проверок,
-	//Большое число - что бы не было переполнения GameID, даже если попытаются заспамить лобби созданием игры.
-	//Ну и конечно же, хорошо бы настроить iptables/nftables на хосте, что бы предотвращать атаку спамом на лобби.
-//	if(date("m")%2==0)$game = 1000000;
-	//Если сменился месяц на чётный
-//	if($last < $game) return ($game+1);
-	//Если сменился месяц на чётный
-//	if($last > ($game+1000000)) return ($game+1);
 
-
-	//Хрень всё что выше, т.к. протокол должен предоставить GameID ДО авторизации клиента игры!
-	//Делаем всё максимально просто, иначе могу заспамить тупо с телнета, без создания игры.
 	if(($last=storageGetLastGameId())!==false)return ($last+1);
 	out("ERR:Cannot get last gameId");
 	return false;
 	
-	
 }
 
+//Filter of games
 //Фильтруем игры, отсеиваем то, что не нужно выводить в листинг лобби
 function filterOpenedGames($games){
 global $hide;
@@ -163,6 +155,7 @@ fclose($mh);
 socket_close($sock);
 */
 
+//Serialized gameStruct for sending to game client
 //Подготваливаем gameStruct к отправке на клиент
 function serializeGameStruct3($game){
 global $GAMESTRUCT_VERSION;
